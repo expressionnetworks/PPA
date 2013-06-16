@@ -1,5 +1,5 @@
 /****************************************************************************\
-*	   PPA: Path Profile Analysis Tool derived from SPLAT! 1.3           *
+*	   PPA: Path Profile Analysis Tool v1.2 derived from SPLAT! 1.3           *
 ******************************************************************************
 *	     Project started in 1997 by John A. Magliacane, KD2BD 	     *
 *			  Last update: 10-Apr-2009			     *
@@ -19,7 +19,7 @@
 *  for more details.							     *
 *									     *
 ******************************************************************************
-* g++ -Wall -O3 -s -lm -lbz2 -fomit-frame-pointer itm.cpp ppa.cpp -o ppa     * 
+* g++ -Wall -O3 -s -lm -fomit-frame-pointer itm.cpp ppa.cpp -o ppa     * 
 \****************************************************************************/
 
 #include <stdio.h>
@@ -27,7 +27,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <bzlib.h>
 #include <unistd.h>
 
 #define GAMMA 2.5
@@ -927,231 +926,6 @@ int LoadSDF_SDF(char *name)
 		return 0;
 }
 
-char *BZfgets(BZFILE *bzfd, unsigned length)
-{
-	/* This function returns at most one less than 'length' number
-	   of characters from a bz2 compressed file whose file descriptor
-	   is pointed to by *bzfd.  In operation, a buffer is filled with
-	   uncompressed data (size = BZBUFFER), which is then parsed
-	   and doled out as NULL terminated character strings every time
-	   this function is invoked.  A NULL string indicates an EOF
-	   or error condition. */
-
-	static int x, y, nBuf;
-	static char buffer[BZBUFFER+1], output[BZBUFFER+1];
-	char done=0;
-
-	if (opened!=1 && bzerror==BZ_OK)
-	{
-		/* First time through.  Initialize everything! */
-
-		x=0;
-		y=0;
-		nBuf=0;
-		opened=1;
-		output[0]=0;
-	}
-
-	do
-	{
-		if (x==nBuf && bzerror!=BZ_STREAM_END && bzerror==BZ_OK && opened)
-		{
-			/* Uncompress data into a static buffer */
-
-			nBuf=BZ2_bzRead(&bzerror, bzfd, buffer, BZBUFFER);
-			buffer[nBuf]=0;
-			x=0;
-		}
-
-		/* Build a string from buffer contents */
-
-		output[y]=buffer[x];
-
-		if (output[y]=='\n' || output[y]==0 || y==(int)length-1)
-		{
-			output[y+1]=0;
-			done=1;
-			y=0;
-		}
-
-		else
-			y++;
-		x++;
-
-	} while (done==0);
-
-	if (output[0]==0)
-		opened=0;
-
-	return (output);
-}
-
-int LoadSDF_BZ(char *name)
-{
-	
-
-	int	x, y, data, indx, minlat, minlon, maxlat, maxlon;
-	char	found, free_page=0, sdf_file[255], path_plus_name[255], *string;
-	FILE	*fd;
-	BZFILE	*bzfd;
-
-	for (x=0; name[x]!='.' && name[x]!=0 && x<247; x++)
-		sdf_file[x]=name[x];
-
-	sdf_file[x]=0;
-
-	/* Parse sdf_file name for minimum latitude and longitude values */
-
-	sscanf(sdf_file,"%d:%d:%d:%d",&minlat,&maxlat,&minlon,&maxlon);
-
-	sdf_file[x]='.';
-	sdf_file[x+1]='s';
-	sdf_file[x+2]='d';
-	sdf_file[x+3]='f';
-	sdf_file[x+4]='.';
-	sdf_file[x+5]='b';
-	sdf_file[x+6]='z';
-	sdf_file[x+7]='2';
-	sdf_file[x+8]=0;
-
-	/* Is it already in memory? */
-
-	for (indx=0, found=0; indx<MAXPAGES && found==0; indx++)
-	{
-		if (minlat==dem[indx].min_north && minlon==dem[indx].min_west && maxlat==dem[indx].max_north && maxlon==dem[indx].max_west)
-			found=1;
-	}
-
-	/* Is room available to load it? */
-
-	if (found==0)
-	{	
-		for (indx=0, free_page=0; indx<MAXPAGES && free_page==0; indx++)
-			if (dem[indx].max_north==-90)
-				free_page=1;
-	}
-
-	indx--;
-
-	if (free_page && found==0 && indx>=0 && indx<MAXPAGES)
-	{
-		/* Search for SDF file in current working directory first */
-
-		strncpy(path_plus_name,sdf_file,255);
-
-		fd=fopen(path_plus_name,"rb");
-		bzfd=BZ2_bzReadOpen(&bzerror,fd,0,0,NULL,0);
-
-		if (fd==NULL || bzerror!=BZ_OK)
-		{
-			
-
-			strncpy(path_plus_name,sdf_path,255);
-			strncat(path_plus_name,sdf_file,255);
-
-			fd=fopen(path_plus_name,"rb");
-			bzfd=BZ2_bzReadOpen(&bzerror,fd,0,0,NULL,0);
-		}
-
-		if (fd!=NULL && bzerror==BZ_OK)
-		{
-			fprintf(stdout,"Loading \"%s\" into page %d...",path_plus_name,indx+1);
-			fflush(stdout);
-
-			sscanf(BZfgets(bzfd,255),"%d",&dem[indx].max_west);
-			sscanf(BZfgets(bzfd,255),"%d",&dem[indx].min_north);
-			sscanf(BZfgets(bzfd,255),"%d",&dem[indx].min_west);
-			sscanf(BZfgets(bzfd,255),"%d",&dem[indx].max_north);
-	
-			for (x=0; x<ippd; x++)
-				for (y=0; y<ippd; y++)
-				{
-					string=BZfgets(bzfd,20);
-					data=atoi(string);
-
-					dem[indx].data[x][y]=data;
-					dem[indx].signal[x][y]=0;
-					dem[indx].mask[x][y]=0;
-
-					if (data>dem[indx].max_el)
-						dem[indx].max_el=data;
-
-					if (data<dem[indx].min_el)
-						dem[indx].min_el=data;
-				}
-
-			fclose(fd);
-
-			BZ2_bzReadClose(&bzerror,bzfd);
-
-			if (dem[indx].min_el<min_elevation)
-				min_elevation=dem[indx].min_el;
-	
-			if (dem[indx].max_el>max_elevation)
-				max_elevation=dem[indx].max_el;
-
-			if (max_north==-90)
-				max_north=dem[indx].max_north;
-
-			else if (dem[indx].max_north>max_north)
-					max_north=dem[indx].max_north;
-
-			if (min_north==90)
-				min_north=dem[indx].min_north;
-
-			else if (dem[indx].min_north<min_north)
-					min_north=dem[indx].min_north;
-
-			if (max_west==-1)
-				max_west=dem[indx].max_west;
-
-			else
-			{
-				if (abs(dem[indx].max_west-max_west)<180)
-				{
- 					if (dem[indx].max_west>max_west)
-						max_west=dem[indx].max_west;
-				}
-
-				else
-				{
- 					if (dem[indx].max_west<max_west)
-						max_west=dem[indx].max_west;
-				}
-			}
-
-			if (min_west==360)
-				min_west=dem[indx].min_west;
-
-			else
-			{
-				if (abs(dem[indx].min_west-min_west)<180)
-				{
- 					if (dem[indx].min_west<min_west)
-						min_west=dem[indx].min_west;
-				}
-
-				else
-				{
- 					if (dem[indx].min_west>min_west)
-						min_west=dem[indx].min_west;
-				}
-			}
-
-			fprintf(stdout," Done!\n");
-			fflush(stdout);
-
-			return 1;
-		}
-
-		else
-			return -1;
-	}
-
-	else
-		return 0;
-}
-
 char LoadSDF(char *name)
 {
 	/* This function loads the requested SDF file from the filesystem.
@@ -1171,10 +945,6 @@ char LoadSDF(char *name)
 
 	return_value=LoadSDF_SDF(name);
 
-	/* If that fails, try loading a compressed SDF. */
-
-	if (return_value==0 || return_value==-1)
-		return_value=LoadSDF_BZ(name);
 
 	/* If neither format can be found, then assume the area is water. */
 
@@ -1398,6 +1168,8 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 		d=5280.0*path.distance[path.length-1];
 	}
 
+	
+	
 	if (normalized)
 	{
 		ed=GetElevation(destination);
@@ -1447,6 +1219,7 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 		 * path to the first Fresnel zone boundary.
 		 */
 
+		
 		if ((LR.frq_mhz>=20.0) && (LR.frq_mhz<=20000.0) && fresnel_plot)
 		{
 			d1=5280.0*path.distance[x];
@@ -1469,15 +1242,23 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 		else
 			r=0.0;
 
+		
+	
 		if (metric)
 		{
+		
+			//segfault here
 			fprintf(fd,"%f\t%f\n",KM_PER_MILE*path.distance[x],METERS_PER_FOOT*height);
 
+			 
+	
 			if (fd1!=NULL && x>0 && x<path.length-2)
 				fprintf(fd1,"%f\t%f\n",KM_PER_MILE*path.distance[x],METERS_PER_FOOT*(terrain==0.0?height:(height+clutter)));
 
 			fprintf(fd2,"%f\t%f\n",KM_PER_MILE*path.distance[x],METERS_PER_FOOT*r);
 			fprintf(fd5,"%f\t%f\n",KM_PER_MILE*path.distance[x],METERS_PER_FOOT*(height-terrain));
+		
+			
 		}
 
 		else
@@ -1491,6 +1272,9 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 			fprintf(fd5,"%f\t%f\n",path.distance[x],height-terrain);
 		}
 
+		
+	
+	
 		if ((LR.frq_mhz>=20.0) && (LR.frq_mhz<=20000.0) && fresnel_plot)
 		{
 			if (metric)
@@ -1577,6 +1361,8 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 		fclose(fd4);
 	}
 
+	
+	
 	if (name[0]=='.')
 	{
 		/* Default filename and output file type */
@@ -1618,7 +1404,8 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 
 	/* Either .ps or .postscript may be used
 	   as an extension for postscript output. */
-
+	
+	
 	if (strncmp(term,"postscript",10)==0)
 		strncpy(ext,"ps\0",3);
 
@@ -1698,6 +1485,8 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 
 	x=system("gnuplot ppa.gp");
 
+	
+	
 	if (x!=-1)
 	{
 		if (gpsav==0)
@@ -1721,6 +1510,7 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 		fflush(stdout);
 	}
 
+	
 	else
 		fprintf(stderr,"\n*** ERROR: Error occurred invoking gnuplot!\n");
 }
@@ -1898,6 +1688,8 @@ void ObstructionAnalysis(struct site xmtr, struct site rcvr, double f, FILE *out
 		fprintf(outfile,"%s",string_f1);
 		fprintf(outfile,"%s",string_fpt6);
 	}
+	
+	
 }
 
 void PathReport(struct site source, struct site destination, char *name, char graph_it)
@@ -2388,6 +2180,8 @@ fflush(stdout);
 
 	fclose(fd2);
 
+	
+	
 	/* Skip plotting the graph if ONLY a path-loss report is needed. */
 
 	if (graph_it)
@@ -2482,8 +2276,9 @@ fflush(stdout);
 			fprintf(stderr,"\n*** ERROR: Error occurred invoking gnuplot!\n");
 	}
 
-	//if (x!=-1 && gpsav==0)
-		//unlink("profile.gp");
+
+	
+	
 }
 
 void SiteReport(struct site xmtr)
@@ -2651,7 +2446,7 @@ int main(int argc, char *argv[])
 
 	struct		site tx_site[32], rx_site;
 
-	strncpy(ppa_version,"1.0\0",4);
+	strncpy(ppa_version,"1.2\0",4);
 
 	strncpy(ppa_name,"PPA\0",4);
 
@@ -2663,16 +2458,17 @@ int main(int argc, char *argv[])
 
 		fprintf(stdout,"       -m Metric units (Default = Imperial)\n");			
 		fprintf(stdout,"       -tla Tx latitude)\n");	
-		fprintf(stdout,"       -tlo Tx longitude)\n");		
+		fprintf(stdout,"       -tlo Tx longitude (W) Postive value 0 to 360)\n");		
 		fprintf(stdout,"       -th Tx Height)\n");	
 		fprintf(stdout,"       -rla Rx latitude)\n");	
-		fprintf(stdout,"       -rlo Rx longitude)\n");		
+		fprintf(stdout,"       -rlo Rx longitude (W) Postive value 0 to 360)\n");		
 		fprintf(stdout,"       -rh Rx Height)\n");
 		fprintf(stdout,"       -fz Fresnel zone clearance percentage (default = 60)\n");	
 		fprintf(stdout,"       -f frequency for Fresnel zone calculation (MHz)\n");
 		fprintf(stdout,"       -d sdf file directory path (overrides path in ~/.ppa_path file)\n");
 		fprintf(stdout,"       -x PNG graph width (default = 800)\n");
 		fprintf(stdout,"       -y PNG graph height (default = 200)\n");
+		fprintf(stdout,"       -n Normalise graph\n");
 		fprintf(stdout,"       -o PNG filename\n");
 	
 		
@@ -2789,12 +2585,14 @@ int main(int argc, char *argv[])
 				pt2pt_mode=1;
 				}
 			}
-			norm=1;
+			
 			
 		
 
 		if (strcmp(argv[x],"-m")==0)
 			metric=1;
+		if (strcmp(argv[x],"-n")==0)
+			norm=1;
 
 		if (strcmp(argv[x],"-d")==0)
 		{
@@ -2810,7 +2608,7 @@ int main(int argc, char *argv[])
 
 			z=x+1;
 
-			if (z<=y && argv[z][0] && argv[z][0]!='-')
+			if (z<=y && argv[z][0]) 
 			{
 				//strncpy(txla,argv[z],253);
 				sscanf(argv[z],"%lf",&txla);
@@ -2825,7 +2623,7 @@ int main(int argc, char *argv[])
 
                         z=x+1;
 
-                        if (z<=y && argv[z][0] && argv[z][0]!='-')
+                        if (z<=y && argv[z][0])
                         {
                                 //strncpy(txla,argv[z],253);
                                 sscanf(argv[z],"%lf",&txlo);
@@ -2840,7 +2638,7 @@ int main(int argc, char *argv[])
 
                         z=x+1;
 
-                        if (z<=y && argv[z][0] && argv[z][0]!='-')
+                        if (z<=y && argv[z][0])
                         {
                                 //strncpy(txla,argv[z],253);
                                 sscanf(argv[z],"%lf",&rxla);
@@ -2854,7 +2652,7 @@ int main(int argc, char *argv[])
 
                         z=x+1;
 
-                        if (z<=y && argv[z][0] && argv[z][0]!='-')
+                        if (z<=y && argv[z][0])
                         {
                                 //strncpy(txla,argv[z],253);
                                 sscanf(argv[z],"%lf",&rxlo);
@@ -2918,8 +2716,10 @@ int main(int argc, char *argv[])
 		
 }	
 
-if(txla==999 || txlo==999 || rxla==999 || rxlo==999){
 
+
+if(txla==999 || txlo==999 || rxla==999 || rxlo==999){
+fprintf(stdout,"\nERROR: BAD LOCATION GIVEN\n");
 exit(1);
 }
 
@@ -2934,12 +2734,20 @@ tx_site[0].lat = txla;
 tx_site[0].lon = txlo;
 tx_site[0].alt = txh;
 
+
+                        
+						
 strncpy(tx_site[0].name,"Tx",3);
 
 rx_site.lat = rxla;
 rx_site.lon = rxlo;
 rx_site.alt = rxh;
+
+
+						
+						
 strncpy(rx_site.name,"Rx",3);
+
 
 // 100 mile limit
 if(Distance(tx_site[0],rx_site) > 100){
@@ -3066,8 +2874,12 @@ exit(1);
 
 fprintf(stdout,"\n%s\n",string);
 fflush(stdout);
-			
+		
+
+	
 			GraphHeight(tx_site[0],rx_site,string,fresnel_plot,norm,forced_freq,width,height);
+	
+
 	
 fprintf(stdout,"\n");
 fflush(stdout);
