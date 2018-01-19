@@ -25,7 +25,7 @@ Execute the following on command line
 /path/to/ppa -tla 30 -tlo 85 -rla 30.1 -rlo 85 -rh 20 -w110  -o /path/to/output -v 1
 
 Example:
-./ppa_mac -tla 30 -tlo 85 -rla 30.1 -rlo 85 -rh 20 -w110  -o ./test/example -v 1
+./ppa -tla 30 -tlo 85 -rla 30.1 -rlo 85 -rh 20 -w110  -o ./test/example -v 1
 
 	Will output intermediate files to current working directory
 	Will create 4 files in folder ./test:
