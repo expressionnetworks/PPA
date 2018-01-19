@@ -19,7 +19,9 @@
 *  for more details.							     *
 *									     *
 ******************************************************************************
-* g++ -Wall -O3 -s -lm -fomit-frame-pointer itm.cpp ppa.cpp -o ppa     * 
+* g++ -Wall -O3 -s -lm -fomit-frame-pointer itm.cpp ppa.cpp -o ppa     *
+* UPDATED per testing by Ed Kline:
+* gcc itm.cpp ppa.cpp -o ppa1 -lm -lstdc++
 \****************************************************************************/
 
 #include <stdio.h>
@@ -94,14 +96,14 @@ struct dem {	int min_north;
 		unsigned char signal[IPPD][IPPD];
            }	dem[MAXPAGES];
 
-struct LR {	double eps_dielect; 
-		double sgm_conductivity; 
+struct LR {	double eps_dielect;
+		double sgm_conductivity;
 		double eno_ns_surfref;
-		double frq_mhz; 
-		double conf; 
+		double frq_mhz;
+		double conf;
 		double rel;
 		double erp;
-		int radio_climate;  
+		int radio_climate;
 		int pol;
 		float antenna_pattern[361][1001];
           }	LR;
@@ -149,7 +151,7 @@ int ReduceAngle(double angle)
 double LonDiff(double lon1, double lon2)
 {
 	/* This function returns the short path longitudinal
-	   difference between longitude1 and longitude2 
+	   difference between longitude1 and longitude2
 	   as an angle between -180.0 and +180.0 degrees.
 	   If lon1 is west of lon2, the result is positive.
 	   If lon1 is east of lon2, the result is negative. */
@@ -201,7 +203,7 @@ char *dec2dms(double decimal)
 		seconds=59;
 
 	string[0]=0;
-	snprintf(string,250,"%d%c %d\' %d\"", degrees*sign, 176, minutes, seconds);
+	snprintf(string,250,"%d degrees %d\' %d\"", degrees*sign, minutes, seconds);
 	return (string);
 }
 
@@ -209,7 +211,7 @@ char *dec2dms(double decimal)
 
 int OrMask(double lat, double lon, int value)
 {
-	
+
 	int	x, y, indx;
 	char	found;
 
@@ -260,8 +262,8 @@ double GetElevation(struct site location)
 		elevation=3.28084*dem[indx].data[x][y];
 	else
 		elevation=-5000.0;
-	
-			
+
+
 	return elevation;
 }
 
@@ -322,7 +324,7 @@ double Azimuth(struct site source, struct site destination)
 
 	src_lat=source.lat*DEG2RAD;
 	src_lon=source.lon*DEG2RAD;
-		
+
 	/* Calculate Surface Distance */
 
 	beta=acos(sin(src_lat)*sin(dest_lat)+cos(src_lat)*cos(dest_lat)*cos(src_lon-dest_lon));
@@ -358,7 +360,7 @@ double Azimuth(struct site source, struct site destination)
 	if (diff>0.0)
 		azimuth=TWOPI-azimuth;
 
-	return (azimuth/DEG2RAD);		
+	return (azimuth/DEG2RAD);
 }
 
 double ElevationAngle(struct site source, struct site destination)
@@ -369,7 +371,7 @@ double ElevationAngle(struct site source, struct site destination)
 	   while a negative result represents an angle of depression
 	   (downtilt), as referenced to a normal to the center of
 	   the earth. */
-	   
+
 	register double a, b, dx;
 
 	a=GetElevation(destination)+destination.alt+earthradius;
@@ -463,13 +465,13 @@ void ReadPath(struct site source, struct site destination)
 			else
 				lon2=lon1+arccos(num,den);
 		}
-	
+
 		while (lon2<0.0)
 			lon2+=TWOPI;
 
 		while (lon2>TWOPI)
 			lon2-=TWOPI;
- 
+
 		lat2=lat2/DEG2RAD;
 		lon2=lon2/DEG2RAD;
 
@@ -532,7 +534,7 @@ double ElevationAngle2(struct site source, struct site destination, double er)
 	   elevation angle than that produced by the destination.  Begin
 	   at the source since we're interested in identifying the FIRST
 	   obstruction along the path between source and destination. */
- 
+
 	for (x=2, block=0; x<path.length && block==0; x++)
 	{
 		distance=5280.0*path.distance[x];
@@ -576,7 +578,7 @@ double AverageTerrain(struct site source, double azimuthx, double start_distance
 	   returned.  If not enough SDF data has been loaded into
 	   memory to complete the survey (critical error), then
 	   -9999.0 is returned. */
- 
+
 	int	c, samples, endpoint;
 	double	beta, lat1, lon1, lat2, lon2, num, den, azimuth, terrain=0.0;
 	struct	site destination;
@@ -611,13 +613,13 @@ double AverageTerrain(struct site source, double azimuthx, double start_distance
 		else
 			lon2=lon1+arccos(num,den);
 	}
-	
+
 	while (lon2<0.0)
 		lon2+=TWOPI;
 
 	while (lon2>TWOPI)
 		lon2-=TWOPI;
- 
+
 	lat2=lat2/DEG2RAD;
 	lon2=lon2/DEG2RAD;
 
@@ -712,7 +714,7 @@ double ReadBearing(char *input)
 	   extra spaces found either leading, trailing, or
 	   embedded within the numbers expressed in the
 	   input string.  Decimal seconds are permitted. */
- 
+
 	double	seconds, bearing=0.0;
 	char	string[20];
 	int	a, b, length, degrees, minutes;
@@ -729,7 +731,7 @@ double ReadBearing(char *input)
 		{
 			string[b]=input[a];
 			b++;
-		}	 
+		}
 	}
 
 	string[b]=0;
@@ -767,7 +769,7 @@ double ReadBearing(char *input)
 
 int LoadSDF_SDF(char *name)
 {
-	
+
 	int	x, y, data, indx, minlat, minlon, maxlat, maxlon;
 	char	found, free_page=0, line[20], sdf_file[255],
 		path_plus_name[255], *s=NULL;
@@ -799,7 +801,7 @@ int LoadSDF_SDF(char *name)
 	/* Is room available to load it? */
 
 	if (found==0)
-	{	
+	{
 		for (indx=0, free_page=0; indx<MAXPAGES && free_page==0; indx++)
 			if (dem[indx].max_north==-90)
 				free_page=1;
@@ -817,7 +819,7 @@ int LoadSDF_SDF(char *name)
 
 		if (fd==NULL)
 		{
-			
+
 			strncpy(path_plus_name,sdf_path,255);
 			strncat(path_plus_name,sdf_file,255);
 
@@ -826,7 +828,7 @@ int LoadSDF_SDF(char *name)
 
 		if (fd!=NULL)
 		{
-		
+
 
 			s=fgets(line,19,fd);
 			sscanf(line,"%d",&dem[indx].max_west);
@@ -913,7 +915,7 @@ int LoadSDF_SDF(char *name)
 				}
 			}
 
-			
+
 
 			return 1;
 		}
@@ -965,7 +967,7 @@ char LoadSDF(char *name)
 		/* Is room available to load it? */
 
 		if (found==0)
-		{	
+		{
 			for (indx=0, free_page=0; indx<MAXPAGES && free_page==0; indx++)
 				if (dem[indx].max_north==-90)
 					free_page=1;
@@ -1168,8 +1170,8 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 		d=5280.0*path.distance[path.length-1];
 	}
 
-	
-	
+
+
 	if (normalized)
 	{
 		ed=GetElevation(destination);
@@ -1192,7 +1194,7 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 		fd4=fopen("fresnel_pt_6.gp", "wb");
 	}
 
-			
+
 	for (x=0; x<path.length-1; x++)
 	{
 		remote.lat=path.lat[x];
@@ -1219,7 +1221,7 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 		 * path to the first Fresnel zone boundary.
 		 */
 
-		
+
 		if ((LR.frq_mhz>=20.0) && (LR.frq_mhz<=100000.0) && fresnel_plot)
 		{
 			d1=5280.0*path.distance[x];
@@ -1242,23 +1244,23 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 		else
 			r=0.0;
 
-		
-	
+
+
 		if (metric)
 		{
-		
+
 			//segfault here
 			fprintf(fd,"%f\t%f\n",KM_PER_MILE*path.distance[x],METERS_PER_FOOT*height);
 
-			 
-	
+
+
 			if (fd1!=NULL && x>0 && x<path.length-2)
 				fprintf(fd1,"%f\t%f\n",KM_PER_MILE*path.distance[x],METERS_PER_FOOT*(terrain==0.0?height:(height+clutter)));
 
 			fprintf(fd2,"%f\t%f\n",KM_PER_MILE*path.distance[x],METERS_PER_FOOT*r);
 			fprintf(fd5,"%f\t%f\n",KM_PER_MILE*path.distance[x],METERS_PER_FOOT*(height-terrain));
-		
-			
+
+
 		}
 
 		else
@@ -1272,9 +1274,9 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 			fprintf(fd5,"%f\t%f\n",path.distance[x],height-terrain);
 		}
 
-		
-	
-	
+
+
+
 		if ((LR.frq_mhz>=20.0) && (LR.frq_mhz<=100000.0) && fresnel_plot)
 		{
 			if (metric)
@@ -1340,7 +1342,7 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 			fprintf(fd4,"%f\t%f\n",path.distance[path.length-1],r);
 		}
 	}
-	
+
 	if (r>maxheight)
 		maxheight=r;
 
@@ -1361,8 +1363,8 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 		fclose(fd4);
 	}
 
-	
-	
+
+
 	if (name[0]=='.')
 	{
 		/* Default filename and output file type */
@@ -1404,8 +1406,8 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 
 	/* Either .ps or .postscript may be used
 	   as an extension for postscript output. */
-	
-	
+
+
 	if (strncmp(term,"postscript",10)==0)
 		strncpy(ext,"ps\0",3);
 
@@ -1431,7 +1433,7 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 	}
 
 	max2y=min2y+maxy-miny;
- 
+
 	fprintf(fd,"set grid\n");
 	fprintf(fd,"set yrange [%2.3f to %2.3f]\n", metric?miny*METERS_PER_FOOT:miny, metric?maxy*METERS_PER_FOOT:maxy);
 	fprintf(fd,"set y2range [%2.3f to %2.3f]\n", metric?min2y*METERS_PER_FOOT:min2y, metric?max2y*METERS_PER_FOOT:max2y);
@@ -1440,23 +1442,23 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 	fprintf(fd,"set term %s size %d, %d\n",term,pngwidth,pngheight);
 
 	if ((LR.frq_mhz>=20.0) && (LR.frq_mhz<=100000.0) && fresnel_plot)
-		fprintf(fd,"set title \"Path Profile Between %s and %s (%.2f%c degrees)\"\n",destination.name, source.name, azimuth,176);
+		fprintf(fd,"set title \"Path Profile Between %s and %s (%.2f degrees)\"\n",destination.name, source.name, azimuth);
 
 	else
-		fprintf(fd,"set title Height Profile Between %s and %s (%.2f%c degrees)\"\n", destination.name, source.name, azimuth,176);
+		fprintf(fd,"set title Height Profile Between %s and %s (%.2f degrees)\"\n", destination.name, source.name, azimuth);
 
 	if (metric)
 		fprintf(fd,"set xlabel \"Distance: %.2f Km Path Loss: %.2f dB Received Power: %.2f dBm\"\n",KM_PER_MILE*Distance(source,destination),loss,dBm);
 	else
 		fprintf(fd,"set xlabel \"Distance: %.2f Mi Path Loss: %.2f dB Received Power: %.2f dBm\"\n",Distance(source,destination),loss,dBm);
 
-	
+
 		if (metric)
 			fprintf(fd,"set ylabel \"Height (meters)\"\n");
 
 		else
 			fprintf(fd,"set ylabel \"Height (feet)\"\n");
-	
+
 
 	fprintf(fd,"set output \"%s.%s\"\n",basename,ext);
 
@@ -1476,8 +1478,8 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 
 	else
 	{
-		
-		
+
+
 
 	}
 
@@ -1485,8 +1487,8 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 
 	x=system("gnuplot ppa.gp");
 
-	
-	
+
+
 	if (x!=-1)
 	{
 		if (gpsav==0)
@@ -1506,10 +1508,10 @@ void GraphHeight(struct site source, struct site destination, char *name, unsign
 			}
 		}
 
-		
+
 	}
 
-	
+
 	else
 		fprintf(stderr,"\n*** ERROR: Error occurred invoking gnuplot!\n");
 }
@@ -1640,7 +1642,7 @@ void ObstructionAnalysis(struct site xmtr, struct site rcvr, double f, FILE *out
 			}
 		}
 	}
-		
+
 	if (h_r>h_r_orig)
 	{
 		if (metric)
@@ -1665,13 +1667,13 @@ void ObstructionAnalysis(struct site xmtr, struct site rcvr, double f, FILE *out
 
 		else
 			snprintf(string_fpt6,150,"\n%.0f%c of the first Fresnel zone is clear.\n",fzone_clearance*100.0,37);
-	
+
 		if (h_r_f1>h_r_orig)
 		{
 			if (metric)
 				snprintf(string_f1,150,"\nAntenna at %s must be raised to at least %.2f meters AGL\nto clear the first Fresnel zone.\n",rcvr.name, METERS_PER_FOOT*(h_r_f1-GetElevation(rcvr)-earthradius));
 
-			else			
+			else
 				snprintf(string_f1,150,"\nAntenna at %s must be raised to at least %.2f feet AGL\nto clear the first Fresnel zone.\n",rcvr.name, h_r_f1-GetElevation(rcvr)-earthradius);
 
 		}
@@ -1687,8 +1689,8 @@ void ObstructionAnalysis(struct site xmtr, struct site rcvr, double f, FILE *out
 		fprintf(outfile,"%s",string_f1);
 		fprintf(outfile,"%s",string_fpt6);
 	}
-	
-	
+
+
 }
 
 void PathReport(struct site source, struct site destination, char *name, char graph_it)
@@ -1726,7 +1728,7 @@ void PathReport(struct site source, struct site destination, char *name, char gr
 
 	fd2=fopen(report_name,"w");
 
-	fprintf(fd2,"\n\t\t--==[ %s v%s Path Analysis ]==--\n\n",ppa_name,ppa_version);
+	//fprintf(fd2,"\n\t\t--==[ %s v%s Path Analysis ]==--\n\n",ppa_name,ppa_version);
 	//fprintf(fd2,"%s\n\n",dashes);
 	fprintf(fd2,"Transmitter site: %s\n",source.name);
 
@@ -1742,7 +1744,7 @@ void PathReport(struct site source, struct site destination, char *name, char gr
 		fprintf(fd2,"Site location: %.4f South / %.4f West",-source.lat, source.lon);
 		//fprintf(fd2, " (%s S / ", source.lat);
 	}
-	
+
 	//fprintf(fd2, "%s W)\n", source.lon);
 
 	if (metric)
@@ -1932,7 +1934,7 @@ void PathReport(struct site source, struct site destination, char *name, char gr
 
 		fprintf(fd2,")\nFraction of Situations: %.1lf%c\n",LR.conf*100.0,37);
 		fprintf(fd2,"Fraction of Time: %.1lf%c\n",LR.rel*100.0,37);
-	
+
 		if (LR.erp!=0.0)
 		{
 			fprintf(fd2,"Transmitter ERP: ");
@@ -2056,7 +2058,7 @@ void PathReport(struct site source, struct site destination, char *name, char gr
 
 			elev[1]=METERS_PER_MILE*(path.distance[y]-path.distance[y-1]);
 
-			point_to_point(elev, source.alt*METERS_PER_FOOT, 
+			point_to_point(elev, source.alt*METERS_PER_FOOT,
 			destination.alt*METERS_PER_FOOT, LR.eps_dielect,
 			LR.sgm_conductivity, LR.eno_ns_surfref, LR.frq_mhz,
 			LR.radio_climate, LR.pol, LR.conf, LR.rel, loss,
@@ -2177,8 +2179,8 @@ void PathReport(struct site source, struct site destination, char *name, char gr
 
 	fclose(fd2);
 
-	
-	
+
+
 	/* Skip plotting the graph if ONLY a path-loss report is needed. */
 
 	if (graph_it)
@@ -2237,7 +2239,7 @@ void PathReport(struct site source, struct site destination, char *name, char gr
 		fprintf(fd,"set yrange [%2.3f to %2.3f]\n", minloss, maxloss);
 		fprintf(fd,"set encoding iso_8859_1\n");
 		fprintf(fd,"set term %s\n",term);
-		fprintf(fd,"set title \"%s Loss Profile Along Path Between %s and %s (%.2f%c azimuth)\"\n",ppa_name, destination.name, source.name, Azimuth(destination,source),176);
+		fprintf(fd,"set title \"%s Loss Profile Along Path Between %s and %s (%.2f degrees azimuth)\"\n",ppa_name, destination.name, source.name, Azimuth(destination,source));
 
 		if (metric)
 			fprintf(fd,"set xlabel \"Distance Between %s and %s (%.2f kilometers)\"\n",destination.name,source.name,KM_PER_MILE*Distance(destination,source));
@@ -2253,7 +2255,7 @@ void PathReport(struct site source, struct site destination, char *name, char gr
 		fprintf(fd,"plot \"profile.gp\" title \"Path Loss\" with lines\n");
 
 		fclose(fd);
-			
+
 		x=system("gnuplot ppa.gp");
 
 		if (x!=-1)
@@ -2263,9 +2265,9 @@ void PathReport(struct site source, struct site destination, char *name, char gr
 				//unlink("ppa.gp");
 				//unlink("profile.gp");
 				//unlink("reference.gp");
-			}	
+			}
 
-			
+
 		}
 
 		else
@@ -2273,8 +2275,8 @@ void PathReport(struct site source, struct site destination, char *name, char gr
 	}
 
 
-	
-	
+
+
 }
 
 void SiteReport(struct site xmtr)
@@ -2288,7 +2290,7 @@ void SiteReport(struct site xmtr)
 
 	for (x=0; report_name[x]!=0; x++)
 		if (report_name[x]==32 || report_name[x]==17 || report_name[x]==92 || report_name[x]==42 || report_name[x]==47)
-			report_name[x]='_';	
+			report_name[x]='_';
 
 	fd=fopen(report_name,"w");
 
@@ -2355,13 +2357,13 @@ void SiteReport(struct site xmtr)
 
 	fprintf(fd,"\n%s\n\n",dashes);
 	fclose(fd);
-	
+
 }
 
 void LoadTopoData(int max_lon, int min_lon, int max_lat, int min_lat)
 {
 	/* This function loads the SDF files required
-	   to cover the limits of the region specified. */ 
+	   to cover the limits of the region specified. */
 
 	int x, y, width, ymin, ymax;
 
@@ -2408,7 +2410,7 @@ void LoadTopoData(int max_lon, int min_lon, int max_lat, int min_lat)
 
 				while (ymin>=360)
 					ymin-=360;
-					
+
 				ymax=ymin+1;
 
 				while (ymax<0)
@@ -2434,8 +2436,8 @@ int main(int argc, char *argv[])
 
 	unsigned char	height_plot=0, norm=0, pt2pt_mode=1,
 			max_txsites, nolospath=0, nositereports=0, fresnel_plot=1;
- 
-	char		header[80], height_file[255], return_height_file[255], 
+
+	char		header[80], height_file[255], return_height_file[255],
 			longley_file[255], string[255], ext[20];
 
 	double		er_mult,txla=999, txlo=999, rxla=999, rxlo=999, txh=0, rxh=0;
@@ -2452,14 +2454,14 @@ int main(int argc, char *argv[])
 	{
 		fprintf(stdout,"\n\t\t --==[ %s v%s Available Options... ]==--\n\n",ppa_name, ppa_version);
 
-		fprintf(stdout,"       -m Metric units (Default = Imperial)\n");			
-		fprintf(stdout,"       -tla Tx latitude)\n");	
-		fprintf(stdout,"       -tlo Tx longitude (W) Positive value 0 to 360)\n");		
-		fprintf(stdout,"       -th Tx Height)\n");	
-		fprintf(stdout,"       -rla Rx latitude)\n");	
-		fprintf(stdout,"       -rlo Rx longitude (W) Positive value 0 to 360)\n");		
+		fprintf(stdout,"       -m Metric units (Default = Imperial)\n");
+		fprintf(stdout,"       -tla Tx latitude)\n");
+		fprintf(stdout,"       -tlo Tx longitude (W) Positive value 0 to 360)\n");
+		fprintf(stdout,"       -th Tx Height)\n");
+		fprintf(stdout,"       -rla Rx latitude)\n");
+		fprintf(stdout,"       -rlo Rx longitude (W) Positive value 0 to 360)\n");
 		fprintf(stdout,"       -rh Rx Height)\n");
-		fprintf(stdout,"       -fz Fresnel zone clearance percentage (default = 60)\n");	
+		fprintf(stdout,"       -fz Fresnel zone clearance percentage (default = 60)\n");
 		fprintf(stdout,"       -f frequency for Fresnel zone calculation (MHz)\n");
 		fprintf(stdout,"       -w Effective radiated power in Watts. Default=0\n");
 		fprintf(stdout,"       -p Polarisation. Default=1 (Vertical). 0=Horizontal\n");
@@ -2469,8 +2471,8 @@ int main(int argc, char *argv[])
 		fprintf(stdout,"       -n Normalise graph\n");
 		fprintf(stdout,"       -v Output value. 1=Path loss dB, 2=Rxd power dBm (default),3=Field strength dBuV/m\n");
 		fprintf(stdout,"       -o PNG filename. Return PNG will be called $filename_R.png\n");
-	
-		
+
+
 	}
 
 	y=argc-1;
@@ -2485,11 +2487,11 @@ int main(int argc, char *argv[])
 	rx_site.lon=361.0;
 	longley_file[0]=0;
 	earthradius=EARTHRADIUS;
-	
+
 	LR.eps_dielect=15.0;
 	LR.sgm_conductivity=0.005;
 	LR.eno_ns_surfref=301.0;
-	LR.frq_mhz=300.0; // 
+	LR.frq_mhz=300.0; //
 	LR.radio_climate=5;
 	LR.pol=1; //
 	LR.conf=0.50;
@@ -2522,7 +2524,7 @@ int main(int argc, char *argv[])
 
 	for (x=1; x<=y; x++)
 	{
-		
+
 		if (strcmp(argv[x],"-m")==0)
 		{
 			z=x+1;
@@ -2538,10 +2540,10 @@ int main(int argc, char *argv[])
 					er_mult=1.0e6;
 
 				earthradius*=er_mult;
-			}			 
+			}
 		}
 
-		
+
 		if (strcmp(argv[x],"-fz")==0)
 		{
 			z=x+1;
@@ -2578,10 +2580,10 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		
 
 
-		
+
+
 			if (strcmp(argv[x],"-o")==0)
 			{
 				z=x+1;
@@ -2592,9 +2594,9 @@ int main(int argc, char *argv[])
 				pt2pt_mode=1;
 				}
 			}
-			
-			
-		
+
+
+
 
 		if (strcmp(argv[x],"-m")==0)
 			metric=1;
@@ -2615,11 +2617,11 @@ int main(int argc, char *argv[])
 
 			z=x+1;
 
-			if (z<=y && argv[z][0]) 
+			if (z<=y && argv[z][0])
 			{
 				//strncpy(txla,argv[z],253);
 				sscanf(argv[z],"%lf",&txla);
-				
+
 			}
 
 		}
@@ -2694,7 +2696,7 @@ int main(int argc, char *argv[])
 
                         if (z<=y && argv[z][0] && argv[z][0]!='-')
                         {
-                               
+
                                 sscanf(argv[z],"%lf",&rxh);
 
                         }
@@ -2702,7 +2704,7 @@ int main(int argc, char *argv[])
                 }
 
 
-		
+
 		if (strcmp(argv[x],"-f")==0)
 		{
 			z=x+1;
@@ -2729,7 +2731,7 @@ int main(int argc, char *argv[])
 
 			}
 		}
-		
+
 		if (strcmp(argv[x],"-w")==0)
 		{
 			z=x+1;
@@ -2740,7 +2742,7 @@ int main(int argc, char *argv[])
 
 			}
 		}
-		
+
 			if (strcmp(argv[x],"-v")==0)
 		{
 			z=x+1;
@@ -2751,7 +2753,7 @@ int main(int argc, char *argv[])
 
 			}
 		}
-}	
+}
 
 
 
@@ -2772,14 +2774,14 @@ tx_site[0].lon = txlo;
 tx_site[0].alt = txh;
 
 
-                        
-						
+
+
 strncpy(tx_site[0].name,"A",2);
 
 rx_site.lat = rxla;
 rx_site.lon = rxlo;
 rx_site.alt = rxh;
-						
+
 strncpy(rx_site.name,"B",2);
 
 
@@ -2789,7 +2791,7 @@ fprintf(stdout,"\nToo far!\n");
 fflush(stdout);
 exit(1);
 }
-	
+
 
 	if (sdf_path[0])
 	{
@@ -2814,7 +2816,7 @@ exit(1);
 	min_lon=(int)floor(tx_site[0].lon);
 	max_lon=(int)floor(tx_site[0].lon);
 
-	
+
 		txlat=(int)floor(tx_site[0].lat);
 		txlon=(int)floor(tx_site[0].lon);
 
@@ -2829,8 +2831,8 @@ exit(1);
 
 		if (LonDiff(txlon,max_lon)>=0.0)
 			max_lon=txlon;
-	
-	
+
+
 		rxlat=(int)floor(rx_site.lat);
 		rxlon=(int)floor(rx_site.lon);
 
@@ -2845,12 +2847,12 @@ exit(1);
 
 		if (LonDiff(rxlon,max_lon)>=0.0)
 			max_lon=rxlon;
-	
-	/* Load the required SDF files */ 
-		
+
+	/* Load the required SDF files */
+
 	LoadTopoData(max_lon, min_lon, max_lat, min_lat);
 
-	
+
 		//PlaceMarker(rx_site);
 
 		if (height_plot)
@@ -2882,10 +2884,10 @@ exit(1);
 			//add .png extension to filename
 			snprintf(string,250,"%s.%s%c",height_file,ext,0);
 			GraphHeight(tx_site[0],rx_site,string,fresnel_plot,norm,width,height);
-			
+
 			double outvalue=dBm;
 			char* outunit="dBm";
-			
+
 			if(output==1){
 			outvalue=loss;
 			outunit="dB";
@@ -2896,7 +2898,7 @@ exit(1);
 			}
 			fprintf(stdout,"%.2f %s\n",outvalue,outunit);
 			fflush(stdout);
-			
+
 			//RETURN PATH
 			//Plot it
 			PlotPath(rx_site,tx_site[0],1);
@@ -2905,7 +2907,7 @@ exit(1);
 			//add .png extension to filename_R
 			snprintf(string,250,"%s_R.%s%c",height_file,ext,0);
 			GraphHeight(rx_site,tx_site[0],string,fresnel_plot,norm,width,height);
-			
+
 			outvalue=dBm;
 			outunit="dBm";
 			if(output==1){
@@ -2918,7 +2920,6 @@ exit(1);
 			}
 			fprintf(stdout,"%.2f %s\n",outvalue,outunit);
 			fflush(stdout);
-	
+
 	return 0;
 }
-
