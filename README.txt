@@ -20,6 +20,9 @@ Usage: ppa (options)
 		       -v Output value. 1=Path loss dB, 2=Rxd power dBm (default),3=Field strength dBuV/m
 		       -o PNG filename. Return PNG will be called $filename_R.png
 
+Build:
+gcc -lstdc++ -v -lm -o ppa itm.cpp ppa.cpp  
+
 Test:
 Execute the following on command line
 /path/to/ppa -tla 30 -tlo 85 -rla 30.1 -rlo 85 -rh 20 -w110  -o /path/to/output -v 1
